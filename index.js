@@ -38,7 +38,7 @@ function nameToImdb(args, cb) {
     if (q.type && !(q.type=='movie' || q.type=='series')) 
         return cb(null, null) // no match for other types
 
-    var key = new Buffer(args.hintUrl || Object.values(q).join(':')).toString('ascii') // convert to ASCII since EventEmitter bugs with UTF8
+    var key = new Buffer(args.hintUrl || Object.keys(q).map(key => { return q[key] }).join(':')).toString('ascii') // convert to ASCII since EventEmitter bugs with UTF8
     
     if (cache.hasOwnProperty(key) && Date.now()-cacheLastSet[key] < CACHE_TTL) {
         return cb(null, cache[key][0], { match: cache[key][1].match, isCached: true })
