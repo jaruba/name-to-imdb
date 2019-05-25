@@ -23,7 +23,9 @@ function getImdbResults(searchTerm, cb) {
 }
 
 function imdbFind(task, cb, loose) {
+
     var fail = function() { cb(null, null) }
+
     // we first search imdb with a name + year query (if we have a year set)
     // if it fails we search by name query only (looser)
     // we shouldn't retry if there's no year, because it searched
@@ -40,7 +42,7 @@ function imdbFind(task, cb, loose) {
         if (results)
             matchSimilar(results, function(result) {
                 if (result)
-                    cb(null, result.id, { match: url })
+                    cb(null, result.imdb, result)
                 else
                     retry()
             })
@@ -59,17 +61,25 @@ function imdbFind(task, cb, loose) {
 
             // make result readable, the imdb result keys make no sense otherwise
             var res = {
-                id: result.id,
+                imdb: result.id,
                 name: result.l,
                 year: result.y,
-                type: result.q
+                type: result.q,
+                poster: result.i && result.i[0] ? result.i[0] : null
             }
 
-            var movieMatch = task.type == 'movie' && res.type == 'feature'
+            var isMovie = (res.type == 'feature')
+            var isSeries = (['TV series', 'TV mini-series'].indexOf(res.type) > -1)
 
-            var seriesMatch = task.type == 'series' && ['TV series', 'TV mini-series'].indexOf(res.type) > -1
+            var movieMatch = task.type == 'movie' && isMovie
+
+            var seriesMatch = task.type == 'series' && isSeries
 
             if (!task.type || movieMatch || seriesMatch) {
+
+                res.type = isMovie ? 'movie' : isSeries ? 'series' : false
+
+                if (!res.type) delete res.type
 
                 if (helpers.yearSimilar(task.year, res.year)) {
 
@@ -109,6 +119,9 @@ function imdbFind(task, cb, loose) {
             if (!helpers.nameAlmostSimilar(task.name, pick.name))
                 pick = secondBest
         }
+
+        if (pick && pick.similarity)
+            delete pick.similarity
 
         callback(pick || secondBest || firstResult || null)
     }
