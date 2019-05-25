@@ -1,4 +1,5 @@
 var namedQueue = require('named-queue');
+var _ = require('lodash');
 var helpers = require('./helpers')
 
 var providers = {
@@ -13,21 +14,20 @@ var CACHE_TTL = 12*60*60*1000; // if we don't find an item, how long does it sta
 
 // In-memory cache for matched items, to avoid flooding Google (or whatever search api we use)
 var cache = { };
-var cacheLastSet = { };
 
 // Named queue, means that we're not working on one name more than once at a tim
-// and a total of 3 names at once
-var queue = new namedQueue(worker, 3)
+// and a total of 6 names at once
+var queue = new namedQueue(worker, 6)
 
 // Outside API
 function nameToImdb(args, cb) {
     args = typeof(args)=='string' ? { name: args } : args
 
-    var q = { name: args.name }
-    if (args.year) q.year = args.year
-    if (args.type) q.type = args.type
+    args.name = helpers.simplifyName(args)
+    
+    var q = _.pick(args, 'name', 'year', 'type')
 
-    if (!q.name)
+    if (! q.name)
         return cb(new Error('empty name'))
 
     if (q.year && typeof(q.year)=='string') q.year = parseInt(q.year.split('-')[0])
@@ -38,26 +38,25 @@ function nameToImdb(args, cb) {
     if (q.type && !(q.type=='movie' || q.type=='series')) 
         return cb(null, null) // no match for other types
 
-    var key = new Buffer(args.hintUrl || Object.keys(q).map(key => { return q[key] }).join(':')).toString('ascii') // convert to ASCII since EventEmitter bugs with UTF8
+    var key = new Buffer(args.hintUrl || _.values(q).join(':')).toString('ascii') // convert to ASCII since EventEmitter bugs with UTF8
     
-    if (cache.hasOwnProperty(key) && Date.now()-cacheLastSet[key] < CACHE_TTL) {
-        return cb(null, cache[key][0], { match: cache[key][1].match, isCached: true })
-    }
+    if (cache.hasOwnProperty(key))
+        return cb(null, cache[key][0], { match: cache[key][1].match, isCached: true }, cache[key][2])
 
     queue.push({ 
         id: key,
         q: q,
         providers: args.providers || defaultProviders,
-    }, function(err, imdb_id, match) {
+    }, function(err, imdb_id, match, item) {
         if (err)
             return cb(err)
         
         if (imdb_id) {
-            cache[key] = [imdb_id, match]
-            cacheLastSet[key] = Date.now()
+            cache[key] = [imdb_id, match, item]
+            setTimeout(function() { delete cache[key] }, CACHE_TTL)
         }
 
-        cb(null, imdb_id, match)
+        cb(null, imdb_id, match, item)
     })
 };
 
@@ -76,12 +75,12 @@ function worker(task, cb) {
         if (!provider)
             return cb(new Error('unknown provider: '+n))
 
-        provider(task.q, function(err, id) {
+        provider(task.q, function(err, id, item) {
             if (err)
                 return cb(err)
 
             if (id)
-                return cb(null, id, { match: n })
+                return cb(null, id, { match: n }, item)
             else
                 nextProv()
         })
