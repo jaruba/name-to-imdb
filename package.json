@@ -25,7 +25,8 @@
   "dependencies": {
     "named-queue": "^2.1.0",
     "needle": "^1.1.2",
-    "node-fetch": "^2.2.0"
+    "node-fetch": "^2.2.0",
+    "lodash": "^4.17.11"
   },
   "devDependencies": {
     "tape": "4.x.x"
