@@ -68,7 +68,7 @@ function imdbFind(task, cb, loose) {
                 poster: result.i && result.i[0] ? result.i[0] : null
             }
 
-            var isMovie = (res.type == 'feature')
+            var isMovie = (['feature','TV special'].indexOf(res.type) > -1)
             var isSeries = (['TV series', 'TV mini-series'].indexOf(res.type) > -1)
 
             var movieMatch = task.type == 'movie' && isMovie
@@ -85,6 +85,8 @@ function imdbFind(task, cb, loose) {
 
                     // try to match by levenshtein distance
                     var similarity = helpers.nameSimilar(task.name, res.name)
+
+                    res.similarity = similarity
 
                     if (similarity > similarityGoal) {
                         if (!pick || (pick && similarity > pick.similarity)) {
@@ -119,9 +121,6 @@ function imdbFind(task, cb, loose) {
             if (!helpers.nameAlmostSimilar(task.name, pick.name))
                 pick = secondBest
         }
-
-        if (pick && pick.similarity)
-            delete pick.similarity
 
         callback(pick || secondBest || firstResult || null)
     }
