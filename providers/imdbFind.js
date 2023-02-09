@@ -2,6 +2,9 @@
 var needle = require("needle")
 var helpers = require("../helpers")
 
+function validImdbId(id) {
+    return !!id.match(/tt\d{7,8}/g)
+}
 
 function getImdbResults(searchTerm, cb) {
 
@@ -57,7 +60,10 @@ function imdbFind(task, cb, loose) {
 
         var pick, secondBest, firstResult
 
-        results.some(function(result) {
+        results.forEach(function(result) {
+
+            if (!(result || {}).id || !validImdbId(result.id))
+                return
 
             // make result readable, the imdb result keys make no sense otherwise
             var res = {
