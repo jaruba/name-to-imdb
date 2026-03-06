@@ -25,7 +25,7 @@ function nameToImdb(args, cb) {
 
     args.name = helpers.simplifyName(args)
     
-    var q = _.pick(args, 'name', 'year', 'type')
+    var q = _.pick(args, 'name', 'year', 'type', 'strict')
 
     if (! q.name)
         return cb(new Error('empty name'))
